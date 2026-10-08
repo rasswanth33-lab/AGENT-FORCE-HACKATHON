@@ -283,26 +283,41 @@ workflow.add_edge("deployment", END)
 swarm_app = workflow.compile()
 
 # --- Execution ---
-# --- Execution ---
-if __name__ == "__main__":
-    print("\n" + "="*60)
-    print("🚀 AI ENGINEERING SWARM TERMINAL")
-    print("="*60)
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+# Allow the frontend to communicate with this backend without CORS blocking
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # In production, replace "*" with the frontend's actual URL
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class PromptRequest(BaseModel):
+    requirement: str
+
+@app.post("/api/build")
+async def trigger_swarm(request: PromptRequest):
+    print(f"\n🚀 FRONTEND TRIGGERED SPRINT: {request.requirement}")
     
-    print("Welcome! What would you like the AI team to build today?")
-    print("(Tip: Be specific about the language, APIs, and features you want)")
+    # Run the autonomous loop based on the frontend's input
+    final_state = swarm_app.invoke({
+        "requirement": request.requirement, 
+        "plan": "", 
+        "code": "", 
+        "errors": "", 
+        "revision_count": 0, 
+        "sprint_report": ""
+    })
     
-    user_requirement = input("\n👉 Enter your software requirement:\n> ")
-    
-    if not user_requirement.strip():
-        print("No requirement provided. Shutting down the swarm.")
-    else:
-        print("\n🚀 INITIALIZING SPRINT...")
-        swarm_app.invoke({
-            "requirement": user_requirement, 
-            "plan": "", 
-            "code": "", 
-            "errors": "", 
-            "revision_count": 0, 
-            "sprint_report": ""
-        })
+    # Send the generated code and report back to the frontend as JSON
+    return {
+        "status": "success",
+        "total_iterations": final_state.get("revision_count", 0),
+        "generated_code": final_state.get("code", ""),
+        "scrum_report": final_state.get("sprint_report", "")
+    }
